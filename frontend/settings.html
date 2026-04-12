@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+body {
+  font-family: Arial;
+  background: #075e54;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.container {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  width: 320px;
+}
+
+h2 {
+  text-align: center;
+  color: #075e54;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+</style>
+
+</head>
+<body>
+<div class="container">
+<h2>Settings</h2>
+<input type="file" id="profilePic">
+<button onclick="uploadPic()">Upload Picture</button>
+<input id="name" placeholder="Full Name"><br><br>
+<input id="phone" placeholder="Phone"><br><br>
+
+<select id="faculty">
+  <option value="">Select Faculty</option>
+  <option>Natural and Applied Sciences</option>
+  <option>Engineering</option>
+  <option>Education</option>
+  <option>Art</option>
+  <option>Administration</option>
+  <option>Social Science</option>
+  <option>Law</option>
+  <option>Allied Science</option>
+</select><br><br>
+
+<select id="department"></select><br><br>
+
+<select id="level">
+  <option>100L</option>
+  <option>200L</option>
+  <option>300L</option>
+  <option>400L</option>
+</select><br><br>
+
+<input id="password" type="password" placeholder="New Password"><br><br>
+
+<button onclick="update()">Save Changes</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+const user = JSON.parse(localStorage.getItem("user"));
+
+// Load existing data
+document.getElementById("name").value = user.name;
+document.getElementById("phone").value = user.phone;
+document.getElementById("faculty").value = user.faculty;
+document.getElementById("level").value = user.level;
+
+// Faculty → Department
+const facultyDepartments = {
+  "Natural and Applied Sciences": ["Computer Science","Mathematics","Physics","Chemistry"],
+  "Engineering": ["Electrical Engineering","Mechanical Engineering","Civil Engineering"],
+  "Education": ["Educational Management","Guidance and Counselling"],
+  "Art": ["English","History"],
+  "Administration": ["Business Administration","Public Administration"],
+  "Social Science": ["Economics","Political Science"],
+  "Law": ["Law"],
+  "Allied Science": ["Nursing","Medical Laboratory Science"]
+};
+
+function loadDepartments(faculty) {
+  const dep = document.getElementById("department");
+  dep.innerHTML = "";
+
+  if (!facultyDepartments[faculty]) return;
+
+  facultyDepartments[faculty].forEach(d => {
+    const option = document.createElement("option");
+    option.value = d;
+    option.textContent = d;
+    dep.appendChild(option);
+  });
+}
+
+// Initial load
+if (user.faculty) {
+  loadDepartments(user.faculty);
+
+  setTimeout(() => {
+    document.getElementById("department").value = user.department;
+  }, 100);
+}
+
+document.getElementById("faculty").addEventListener("change", function() {
+  loadDepartments(this.value);
+});
+
+
+// ✅ UPDATE PROFILE
+async function update() {
+  try {
+    const res = await fetch("http://localhost:3000/api/auth/update", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        username: user.username,
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        faculty: document.getElementById("faculty").value,
+        department: document.getElementById("department").value,
+        level: document.getElementById("level").value,
+        password: document.getElementById("password").value
+      })
+    });
+
+    const text = await res.text();
+
+    alert(text);
+
+  } catch (err) {
+    console.log("ERROR:", err);
+    alert("Cannot connect to server");
+  }
+}
+
+
+// ✅ UPLOAD PROFILE PICTURE (SEPARATE FUNCTION)
+async function uploadPic() {
+  const file = document.getElementById("profilePic").files[0];
+
+  if (!file) return alert("Select image");
+
+  const form = new FormData();
+  form.append("image", file);
+  form.append("username", user.username);
+
+  const res = await fetch("http://localhost:3000/api/profile", {
+    method: "POST",
+    body: form
+  });
+
+  const data = await res.json();
+
+  alert(data.message);
+
+  user.profilePic = data.profilePic;
+  localStorage.setItem("user", JSON.stringify(user));
+}
+
+
+// Logout
+function logout() {
+  localStorage.removeItem("user");
+  window.location = "login.html";
+}
+</script>
+
+</body>
+</html>

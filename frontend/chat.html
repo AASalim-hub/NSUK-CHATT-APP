@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: #ece5dd;
+    }
+
+    header {
+      background: #075e54;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .msg {
+      max-width: 70%;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .me {
+      align-self: flex-end;
+      background: #dcf8c6;
+    }
+
+    .other {
+      align-self: flex-start;
+      background: white;
+    }
+
+    .time {
+      font-size: 10px;
+      color: gray;
+      text-align: right;
+      margin-top: 5px;
+    }
+
+    footer {
+      display: flex;
+      padding: 10px;
+      background: #f0f0f0;
+      position: sticky;
+      bottom: 0;
+    }
+
+    footer input {
+      flex: 1;
+      padding: 10px;
+    }
+
+    footer button {
+      margin-left: 5px;
+      padding: 10px;
+    }
+
+    #tools {
+      padding: 5px 10px;
+      background: #ddd;
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    #adminControls {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+<audio id="notifySound" src="https://www.soundjay.com/buttons/sounds/button-3.mp3"></audio>
+
+<header id="roomName"></header>
+
+<div id="messages"></div>
+
+<!-- TOOLS (file + admin) -->
+<div id="tools">
+  <input type="file" id="file">
+  <button onclick="sendFile()">Send File</button>
+
+  <div id="adminControls">
+    <button onclick="lockChat()">Lock</button>
+    <button onclick="unlockChat()">Unlock</button>
+
+    <input id="adminUser" placeholder="username">
+    <button onclick="addAdmin()">Promote</button>
+    <button onclick="removeAdmin()">Remove</button>
+  </div>
+</div>
+
+<!-- INPUT AREA -->
+<footer>
+  <input id="msg" placeholder="Type message">
+  <button onclick="send()">Send</button>
+</footer>
+
+<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+
+<script>
+const socket = io("http://localhost:3000");
+
+const user = JSON.parse(localStorage.getItem("user"));
+const chatType = localStorage.getItem("chatType");
+
+let room = "";
+
+if (chatType === "general") room = "NSUK-GENERAL";
+if (chatType === "faculty") room = "FACULTY-" + user.faculty;
+if (chatType === "department") room = "DEPT-" + user.department;
+if (chatType === "level") room = "LEVEL-" + user.level;
+
+document.getElementById("roomName").innerText = room;
+
+// ADMIN CHECK
+socket.emit("checkAdmin", { room, username: user.username });
+
+socket.on("adminStatus", (isAdmin) => {
+  if (isAdmin) {
+    document.getElementById("adminControls").style.display = "inline";
+  }
+});
+
+// JOIN ROOM
+socket.emit("joinRoom", room);
+
+// LOAD OLD
+socket.on("oldMessages", (messages) => {
+  document.getElementById("messages").innerHTML = "";
+  messages.forEach(showMessage);
+});
+
+// NEW MESSAGE
+socket.on("message", (data) => {
+  showMessage(data);
+
+  // 🔔 play sound if not your message
+  if (data.sender !== user.username) {
+    document.getElementById("notifySound").play();
+  }
+  console.log("MESSAGE DATA:", data);
+});
+
+// DISPLAY MESSAGE
+function showMessage(data) {
+  const div = document.getElementById("messages");
+
+  let side = data.sender === user.username ? "me" : "other";
+
+  let time = "";
+
+  if (data.time) {
+    const d = new Date(data.time);
+    time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  let img = data.profilePic
+    ? `<img src="http://localhost:3000/${data.profilePic}" 
+       width="30" style="border-radius:50%; vertical-align:middle;">`
+    : "";
+
+  let html = `<div class="msg ${side}">
+    ${img} <b>${data.sender}</b><br>`;
+
+  if (data.isFile) {
+    const url = "http://localhost:3000/" + data.text;
+
+    if (data.text.match(/\.(jpg|png|jpeg)/)) {
+      html += `<img src="${url}" width="200">`;
+    } else if (data.text.match(/\.(mp4)/)) {
+      html += `<video width="200" controls src="${url}"></video>`;
+    } else {
+      html += `<a href="${url}" download>Download File</a>`;
+    }
+
+  } else {
+    html += data.text;
+  }
+
+  html += `<div class="time">${time}</div></div>`;
+
+  div.innerHTML += html;
+  div.scrollTop = div.scrollHeight;
+}
+
+// SEND TEXT
+function send() {
+  const msg = document.getElementById("msg").value;
+  if (!msg) return;
+
+  socket.emit("sendMessage", {
+    room,
+    sender: user.username,
+    text: msg
+  });
+
+  document.getElementById("msg").value = "";
+}
+
+// SEND FILE
+async function sendFile() {
+  const file = document.getElementById("file").files[0];
+  if (!file) return alert("Select file");
+
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch("http://localhost:3000/api/upload", {
+    method: "POST",
+    body: form
+  });
+
+  const data = await res.json();
+
+  socket.emit("sendMessage", {
+    room,
+    sender: user.username,
+    text: data.filePath,
+    isFile: true
+  });
+}
+
+// ADMIN
+function lockChat() { socket.emit("lockRoom", room); }
+function unlockChat() { socket.emit("unlockRoom", room); }
+
+function addAdmin() {
+  const u = document.getElementById("adminUser").value;
+  socket.emit("addAdmin", { room, username: u });
+}
+
+function removeAdmin() {
+  const u = document.getElementById("adminUser").value;
+  socket.emit("removeAdmin", { room, username: u });
+}
+</script>
+
+</body>
+</html>

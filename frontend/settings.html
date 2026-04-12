@@ -130,7 +130,7 @@ document.getElementById("faculty").addEventListener("change", function() {
 // ✅ UPDATE PROFILE
 async function update() {
   try {
-    const res = await fetch("http://localhost:3000/api/auth/update", {
+    const res = await fetch("https://nsuk-chatt-app.onrender.com/api/auth/update", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -165,7 +165,7 @@ async function uploadPic() {
   form.append("image", file);
   form.append("username", user.username);
 
-  const res = await fetch("http://localhost:3000/api/profile", {
+  const res = await fetch("https://nsuk-chatt-app.onrender.com/api/profile", {
     method: "POST",
     body: form
   });

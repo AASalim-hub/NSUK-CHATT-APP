@@ -114,10 +114,10 @@
   <button onclick="send()">Send</button>
 </footer>
 
-<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+<script src="http://nsuk-chatt-app.onrender.com/socket.io/socket.io.js"></script>
 
 <script>
-const socket = io("http://localhost:3000");
+const socket = io("https://nsuk-chatt-app.onrender.com");
 
 const user = JSON.parse(localStorage.getItem("user"));
 const chatType = localStorage.getItem("chatType");
@@ -174,7 +174,7 @@ function showMessage(data) {
   }
 
   let img = data.profilePic
-    ? `<img src="http://localhost:3000/${data.profilePic}" 
+    ? `<img src="https://nsuk-chatt-app.onrender.com/${data.profilePic}" 
        width="30" style="border-radius:50%; vertical-align:middle;">`
     : "";
 
@@ -182,7 +182,7 @@ function showMessage(data) {
     ${img} <b>${data.sender}</b><br>`;
 
   if (data.isFile) {
-    const url = "http://localhost:3000/" + data.text;
+    const url = "https://nsuk-chatt-app.onrender.com/" + data.text;
 
     if (data.text.match(/\.(jpg|png|jpeg)/)) {
       html += `<img src="${url}" width="200">`;
@@ -224,7 +224,7 @@ async function sendFile() {
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch("http://localhost:3000/api/upload", {
+  const res = await fetch("https://nsuk-chatt-app.onrender.com/api/upload", {
     method: "POST",
     body: form
   });

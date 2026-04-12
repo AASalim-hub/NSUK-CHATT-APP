@@ -155,7 +155,7 @@ document.getElementById("faculty").addEventListener("change", function () {
 // ✅ SIGNUP FUNCTION
 async function signup() {
   try {
-    const res = await fetch("http://localhost:3000/api/auth/signup", {
+    const res = await fetch("https://nsuk-chatt-app.onrender.com/api/auth/signup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

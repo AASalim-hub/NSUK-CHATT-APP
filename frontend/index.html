@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Sign Up</title>
 
   <style>
     body {
@@ -25,10 +27,10 @@
       color: #075e54;
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
+      margin: 5px 0;
     }
 
     button {
@@ -43,66 +45,157 @@
     button:hover {
       background: #128c7e;
     }
+
+    p {
+      text-align: center;
+    }
   </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h2>NSUK Chat - Login</h2>
+  <h2>NSUK Chat - Sign Up</h2>
 
+  <input id="name" placeholder="Full Name">
   <input id="username" placeholder="Username">
+  <input id="phone" placeholder="Phone Number">
+  <input id="email" placeholder="NSUK Email">
+  <input id="matric" placeholder="Matric Number">
+
+  <select id="faculty">
+    <option value="">Select Faculty</option>
+    <option>Natural and Applied Sciences</option>
+    <option>Engineering</option>
+    <option>Education</option>
+    <option>Art</option>
+    <option>Administration</option>
+    <option>Social Science</option>
+    <option>Law</option>
+    <option>Allied Science</option>
+  </select>
+
+  <select id="department"></select>
+
+  <select id="level">
+    <option value="">Select Level</option>
+    <option>100L</option>
+    <option>200L</option>
+    <option>300L</option>
+    <option>400L</option>
+  </select>
+
   <input id="password" type="password" placeholder="Password">
 
-  <button onclick="login()">Login</button>
+  <button onclick="signup()">Sign Up</button>
 
-  <p>
-    <a href="signup.html">Create Account</a>
+  <p>Already have an account?  
+    <a href="login.html">Login</a>
   </p>
 </div>
 
-<script src="login.js"></script>
+<script src="signup.js"></script>
 
 <script>
-async function login() {
+
+// ✅ FACULTY → DEPARTMENT DATA
+const facultyDepartments = {
+  "Natural and Applied Sciences": [
+    "Computer Science",
+    "Mathematics",
+    "Physics",
+    "Chemistry"
+  ],
+  "Engineering": [
+    "Electrical Engineering",
+    "Mechanical Engineering",
+    "Civil Engineering"
+  ],
+  "Education": [
+    "Educational Management",
+    "Guidance and Counselling"
+  ],
+  "Art": [
+    "English",
+    "History"
+  ],
+  "Administration": [
+    "Business Administration",
+    "Public Administration"
+  ],
+  "Social Science": [
+    "Economics",
+    "Political Science"
+  ],
+  "Law": [
+    "Law"
+  ],
+  "Allied Science": [
+    "Nursing",
+    "Medical Laboratory Science"
+  ]
+};
+
+// ✅ UPDATE DEPARTMENTS WHEN FACULTY CHANGES
+document.getElementById("faculty").addEventListener("change", function () {
+  const faculty = this.value;
+  const departmentSelect = document.getElementById("department");
+
+  // Clear old options
+  departmentSelect.innerHTML = '<option value="">Select Department</option>';
+
+  if (facultyDepartments[faculty]) {
+    facultyDepartments[faculty].forEach(dep => {
+      const option = document.createElement("option");
+      option.value = dep;
+      option.textContent = dep;
+      departmentSelect.appendChild(option);
+    });
+  }
+});
+
+// ✅ SIGNUP FUNCTION
+async function signup() {
   try {
-    const res = await fetch("https://nsuk-chatt-app.onrender.com/api/auth/login", {
+    const res = await fetch("https://nsuk-chatt-app.onrender.com/api/auth/signup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
+        name: document.getElementById("name").value,
         username: document.getElementById("username").value,
-        password: document.getElementById("password").value
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value,
+        matric: document.getElementById("matric").value,
+        password: document.getElementById("password").value,
+        faculty: document.getElementById("faculty").value,
+        department: document.getElementById("department").value,
+        level: document.getElementById("level").value
       })
     });
 
-    const text = await res.text();   // 👈 get raw response first
-    console.log("RAW RESPONSE:", text);
+    const text = await res.text();
 
-    let data;
-    try {
-      data = JSON.parse(text); // try to convert to JSON
-    } catch (err) {
-      alert("Server did not return JSON");
-      return;
+    console.log("SIGNUP RESPONSE:", text);
+
+    alert(text);
+
+    if (text.toLowerCase().includes("successful")) {
+      window.location = "login.html";
     }
 
-    console.log("PARSED DATA:", data);
-
-    if (data.user) {
-      localStorage.setItem("user", JSON.stringify(data.user));
-      alert("Login successful");
-      window.location.href = "dashboard.html";
-    } else {
-      alert("Login failed: " + text);
-    }
-
-  } catch (error) {
-    console.log("ERROR:", error);
-    alert("Something went wrong");
+  } catch (err) {
+    console.log("ERROR:", err);
+    alert("Signup failed");
   }
 }
+
+// ✅ GO TO LOGIN
+function goLogin() {
+  window.location = "login.html";
+}
+
 </script>
 
 </body>

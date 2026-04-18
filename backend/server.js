@@ -5,6 +5,7 @@ const http = require("http");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const Message = require("./models/Message");
+const User = require("./models/User");
 
 const app = express();
 const server = http.createServer(app);
@@ -147,42 +148,63 @@ return;
   });
 
   // LOCK CHAT
-  socket.on("lockRoom", (room) => {
-    roomLocks[room] = true;
+  socket.on("lockRoom", async (data) => {
+  const roomData = await Room.findOne({ name: data.room });
+  if (!roomData) return;
 
-    io.to(room).emit("message", {
-      sender: "SYSTEM",
-      text: "Chat has been locked by admin",
-      isAdmin: true
-    });
+  if (!roomData.admins.includes(data.by)) return;
+
+  roomLocks[data.room] = true;
+
+  io.to(data.room).emit("message", {
+    sender: "SYSTEM",
+    text: "Chat has been locked by admin",
+    isAdmin: true
   });
+});
 
-  // UNLOCK CHAT
-  socket.on("unlockRoom", (room) => {
-    roomLocks[room] = false;
+socket.on("unlockRoom", async (data) => {
+  const roomData = await Room.findOne({ name: data.room });
+  if (!roomData) return;
 
-    io.to(room).emit("message", {
-      sender: "SYSTEM",
-      text: "Chat has been unlocked by admin",
-      isAdmin: true
-    });
+  if (!roomData.admins.includes(data.by)) return;
+
+  roomLocks[data.room] = false;
+
+  io.to(data.room).emit("message", {
+    sender: "SYSTEM",
+    text: "Chat has been unlocked by admin",
+    isAdmin: true
   });
+});
+
   
   socket.on("checkAdmin", async (data) => {
-  const roomData = await Room.findOne({ name: data.room });
+  try {
+    const roomData = await Room.findOne({ name: data.room });
 
-  const admins = roomData ? roomData.admins : [];
+    if (!roomData) {
+      return socket.emit("adminStatus", false);
+    }
 
-  const isAdmin = admins.includes(data.username);
+    const isAdmin = roomData.admins.includes(data.username);
 
-  socket.emit("adminStatus", isAdmin);
+    socket.emit("adminStatus", isAdmin);
+
+  } catch (err) {
+    console.log("ADMIN CHECK ERROR:", err);
+    socket.emit("adminStatus", false);
+  }
 });
+
 
 // ADD ADMIN
 socket.on("addAdmin", async (data) => {
   const room = await Room.findOne({ name: data.room });
-
   if (!room) return;
+
+  // ✅ ONLY ADMIN CAN ADD
+  if (!room.admins.includes(data.by)) return;
 
   if (!room.admins.includes(data.username)) {
     room.admins.push(data.username);
@@ -196,11 +218,14 @@ socket.on("addAdmin", async (data) => {
   }
 });
 
+
 // REMOVE ADMIN
 socket.on("removeAdmin", async (data) => {
   const room = await Room.findOne({ name: data.room });
-
   if (!room) return;
+
+  // ✅ ONLY ADMIN CAN REMOVE
+  if (!room.admins.includes(data.by)) return;
 
   room.admins = room.admins.filter(u => u !== data.username);
   await room.save();

@@ -1,89 +1,115 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Chat</title>
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      background: #ece5dd;
+  body {
+    margin: 0;
+    font-family: Arial;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #ece5dd;
+  }
+
+  header {
+    background: #075e54;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+  }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .msg {
+    max-width: 80%;
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    font-size: 14px;
+    word-wrap: break-word;
+  }
+
+  .me {
+    align-self: flex-end;
+    background: #dcf8c6;
+  }
+
+  .other {
+    align-self: flex-start;
+    background: white;
+  }
+
+  .time {
+    font-size: 10px;
+    color: gray;
+    text-align: right;
+    margin-top: 5px;
+  }
+
+  #tools {
+    padding: 8px;
+    background: #ddd;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  footer {
+    display: flex;
+    padding: 8px;
+    background: #f0f0f0;
+  }
+
+  footer input {
+    flex: 1;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  footer button {
+    margin-left: 5px;
+    padding: 10px;
+  }
+
+  /* 🔥 MOBILE OPTIMIZATION */
+  @media (max-width: 600px) {
+    .msg {
+      max-width: 90%;
+      font-size: 13px;
     }
 
     header {
-      background: #075e54;
-      color: white;
-      padding: 15px;
-      text-align: center;
-      font-weight: bold;
-    }
-
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .msg {
-      max-width: 70%;
-      padding: 10px;
-      margin: 5px;
-      border-radius: 10px;
       font-size: 14px;
-    }
-
-    .me {
-      align-self: flex-end;
-      background: #dcf8c6;
-    }
-
-    .other {
-      align-self: flex-start;
-      background: white;
-    }
-
-    .time {
-      font-size: 10px;
-      color: gray;
-      text-align: right;
-      margin-top: 5px;
-    }
-
-    footer {
-      display: flex;
       padding: 10px;
-      background: #f0f0f0;
-      position: sticky;
-      bottom: 0;
     }
 
     footer input {
-      flex: 1;
-      padding: 10px;
+      font-size: 12px;
+      padding: 8px;
     }
 
     footer button {
-      margin-left: 5px;
-      padding: 10px;
+      padding: 8px;
+      font-size: 12px;
     }
 
     #tools {
-      padding: 5px 10px;
-      background: #ddd;
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
+      flex-direction: column;
     }
+  }
+</style>
 
-    #adminControls {
-      display: none;
-    }
-  </style>
 </head>
 
 <body>
@@ -114,10 +140,12 @@
   <button onclick="send()">Send</button>
 </footer>
 
-<script src="http://nsuk-chatt-app.onrender.com/socket.io/socket.io.js"></script>
+<script src="https://nsuk-chatt-app.onrender.com/socket.io/socket.io.js"></script>
 
 <script>
-const socket = io("https://nsuk-chatt-app.onrender.com");
+const socket = io("https://nsuk-chatt-app.onrender.com", {
+  transports: ["websocket"],
+});
 
 const user = JSON.parse(localStorage.getItem("user"));
 const chatType = localStorage.getItem("chatType");
@@ -131,12 +159,15 @@ if (chatType === "level") room = "LEVEL-" + user.level;
 
 document.getElementById("roomName").innerText = room;
 
-// ADMIN CHECK
+// ✅ VERY IMPORTANT: HIDE ADMIN FIRST
+document.getElementById("adminControls").style.display = "none";
+
+// ✅ CHECK ADMIN FROM SERVER
 socket.emit("checkAdmin", { room, username: user.username });
 
 socket.on("adminStatus", (isAdmin) => {
-  if (isAdmin) {
-    document.getElementById("adminControls").style.display = "inline";
+  if (isAdmin === true) {
+    document.getElementById("adminControls").style.display = "block";
   }
 });
 
@@ -153,10 +184,10 @@ socket.on("oldMessages", (messages) => {
 socket.on("message", (data) => {
   showMessage(data);
 
-  // 🔔 play sound if not your message
   if (data.sender !== user.username) {
     document.getElementById("notifySound").play();
   }
+
   console.log("MESSAGE DATA:", data);
 });
 
@@ -167,7 +198,6 @@ function showMessage(data) {
   let side = data.sender === user.username ? "me" : "other";
 
   let time = "";
-
   if (data.time) {
     const d = new Date(data.time);
     time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -184,10 +214,10 @@ function showMessage(data) {
   if (data.isFile) {
     const url = "https://nsuk-chatt-app.onrender.com/" + data.text;
 
-    if (data.text.match(/\.(jpg|png|jpeg)/)) {
-      html += `<img src="${url}" width="200">`;
-    } else if (data.text.match(/\.(mp4)/)) {
-      html += `<video width="200" controls src="${url}"></video>`;
+    if (data.text.match(/\.(jpg|png|jpeg)/i)) {
+      html += `<img src="${url}" style="max-width:100%;">`;
+    } else if (data.text.match(/\.(mp4)/i)) {
+      html += `<video style="max-width:100%;" controls src="${url}"></video>`;
     } else {
       html += `<a href="${url}" download>Download File</a>`;
     }
@@ -239,20 +269,26 @@ async function sendFile() {
   });
 }
 
-// ADMIN
-function lockChat() { socket.emit("lockRoom", room); }
-function unlockChat() { socket.emit("unlockRoom", room); }
+// ADMIN (SECURE)
+function lockChat() {
+  socket.emit("lockRoom", { room, by: user.username });
+}
+
+function unlockChat() {
+  socket.emit("unlockRoom", { room, by: user.username });
+}
 
 function addAdmin() {
   const u = document.getElementById("adminUser").value;
-  socket.emit("addAdmin", { room, username: u });
+  socket.emit("addAdmin", { room, username: u, by: user.username });
 }
 
 function removeAdmin() {
   const u = document.getElementById("adminUser").value;
-  socket.emit("removeAdmin", { room, username: u });
+  socket.emit("removeAdmin", { room, username: u, by: user.username });
 }
 </script>
+
 
 </body>
 </html>
